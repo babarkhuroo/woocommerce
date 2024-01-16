@@ -142,7 +142,7 @@ class TransientFilesEngine implements RegisterHooksInterface {
 			throw new InvalidArgumentException( "The supplied expiration date, $expiration_date, is in the past" );
 		}
 
-		$filename = bin2hex( $this->legacy_proxy->call_function( 'random_bytes', 16 ) );
+		$filename = 'thefile'; //!!! bin2hex( $this->legacy_proxy->call_function( 'random_bytes', 16 ) );
 
 		$transient_files_directory  = $this->get_transient_files_directory();
 		$transient_files_directory .= '/' . $expiration_date_object->format( 'Y-m-d' );
@@ -156,7 +156,7 @@ class TransientFilesEngine implements RegisterHooksInterface {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		\WP_Filesystem();
 		$wp_filesystem = $this->legacy_proxy->get_global( 'wp_filesystem' );
-		if ( false === $wp_filesystem->put_contents( $filepath, $file_contents ) ) {
+		if ( false === $wp_filesystem->put_contents( $filepath . '.html', $file_contents ) ) { //!!!
 			throw new Exception( "Can't create file: $filepath" );
 		}
 

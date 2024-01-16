@@ -129,7 +129,7 @@ abstract class RestApiController implements RegisterHooksInterface {
 	 * @return array The updated list of WooCommerce REST API namespaces/controllers.
 	 */
 	protected function handle_woocommerce_rest_api_get_rest_namespaces( array $namespaces ): array {
-		$namespaces['wc/v3'][ $this->get_rest_api_namespace ] = static::class;
+		$namespaces['wc/v3'][ $this->get_rest_api_namespace() ] = static::class;
 		return $namespaces;
 	}
 

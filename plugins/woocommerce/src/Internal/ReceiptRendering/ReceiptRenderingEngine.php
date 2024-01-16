@@ -18,6 +18,15 @@ use \WC_Order;
  */
 class ReceiptRenderingEngine {
 
+	private const FONT_SIZE = 12;
+
+	private const LINE_HEIGHT = self::FONT_SIZE*1.5;
+
+	private const ICON_HEIGHT = self::LINE_HEIGHT;
+
+	private const ICON_WIDTH = self::ICON_HEIGHT*(4/3);
+
+
 	/**
 	 * Order meta key that stores the file name of the last generated receipt.
 	 */
@@ -136,10 +145,102 @@ class ReceiptRenderingEngine {
 	 * @return array The order data as an associative array.
 	 */
 	private function get_order_data( WC_Order $order ): array {
-		// TODO: Properly implement this method when the actual template is available.
+		$store_name = get_bloginfo('name');
+		if($store_name) {
+			$receipt_title = sprintf(__('Receipt from %s', 'woocommerce'), $store_name);
+		}
+		else {
+			$receipt_title = __('Receipt', 'wcoocommerce');
+		}
+
+		$order_id = $order->get_id();
+		if($order_id) {
+			$summary_title = sprintf( __('Summary: Order #%d', 'woocommerce'), $order->get_id());
+		}
+		else {
+			$summary_title = __('Summary', 'woocommerce');
+		}
+
+		$get_price_args = ['currency' => $order->get_currency()];
+
+		$line_items_info=[];
+		$line_items = $order->get_items('line_item');
+		foreach($line_items as $line_item) {
+			$line_item_product = $line_item->get_product();
+			$line_item_title =
+				($line_item_product instanceof \WC_Product_Variation) ?
+					(wc_get_product($line_item_product->get_parent_id())->get_name()) . '. ' . $line_item_product->get_attribute_summary() :
+					$line_item_product->get_name();
+			$line_items_info[] = [
+				'title' => wp_kses( $line_item_title, [], []),
+				'quantity' => $line_item->get_quantity(),
+				'amount' => wc_price($line_item->get_total(), $get_price_args)
+			];
+		}
+
+		$line_items_info[] = [
+			'title' => __('Subtotal', 'woocommerce'),
+			'amount' => wc_price($order->get_subtotal(), $get_price_args)
+		];
+
+		foreach($order->get_fees() as $fee) {
+			$name = $fee->get_name();
+			$line_items_info[] = [
+				'title' => '' === $name ? __('Fee', 'woocommerce') : $name,
+				'amount' => wc_price($fee->get_amount(), $get_price_args)
+			];
+		}
+
+		foreach($order->get_coupons() as $coupon) {
+			$line_items_info[] = [
+				'title' => sprintf(__('Discount (%s)', 'woocommerce'), $coupon->get_name()),
+				'amount' => wc_price(-$coupon->get_discount(), $get_price_args)
+			];
+		}
+
+		$total_taxes = 0;
+		foreach($order->get_taxes() as $tax) {
+			$total_taxes += $tax->get_tax_total();
+		}
+
+		$line_items_info[] = [
+			'title' => __('Shipping', 'woocommerce'),
+			'amount' => wc_price($order->get_shipping_total(), $get_price_args)
+		];
+		$line_items_info[] = [
+			'title' => __('Taxes', 'woocommerce'),
+			'amount' => wc_price($total_taxes, $get_price_args)
+		];
+		$line_items_info[] = [
+			'title' => __('Amount Paid', 'woocommerce'),
+			'amount' => wc_price($order->get_total(), $get_price_args)
+		];
+
 		return array(
-			'order_id' => $order->get_id(),
-			'amount'   => $order->get_total(),
+			'constants' => [
+				'font_size' => self::FONT_SIZE,
+				'margin' => 16,
+				'title_font_size' => 24,
+				'footer_font_size' => 10,
+				'line_height' => self::LINE_HEIGHT,
+				'icon_height' => self::ICON_HEIGHT,
+				'icon_width' => self::ICON_WIDTH,
+			],
+			'texts' => [
+				'receipt_title' => $receipt_title,
+				'amount_paid_section_title' => __('Amount Paid', 'woocommerce'),
+				'date_paid_section_title' => __('Date Paid', 'woocommerce'),
+				'payment_method_section_title' => __('Payment method', 'woocommerce'),
+				'summary_section_title' => $summary_title,
+				'order_notes_section_title' => __('Notes', 'woocommerce')
+			],
+			'formatted_amount' => wc_price( $order->get_total(), $get_price_args),
+			'formatted_date' => wc_format_datetime( $order->get_date_created() ), //!!! date paid
+			'card_icon_name' => 'foo', //!!! TODO
+			'card_last_digits' => '1234', //!!! TODO
+			'line_items' => $line_items_info,
+			'payment_method' => $order->get_payment_method_title(),
+			'notes' => array_map('get_comment_text', $order->get_customer_order_notes())
 		);
 	}
 }
